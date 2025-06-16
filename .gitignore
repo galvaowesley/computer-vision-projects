@@ -9,3 +9,13 @@ data
 
 # Checkpoint files
 checkpoints/
+
+# Latex files
+*.aux
+*.blg
+*.log
+*.out
+*.gz
+*.fdb_latexmk
+*.fls
+*.bbl
