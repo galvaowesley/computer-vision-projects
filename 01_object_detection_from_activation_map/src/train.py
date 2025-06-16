@@ -93,14 +93,14 @@ def valid_step(model, dl_valid, loss_func, perf_func, device):
     return loss_log.item(), perf_log.item()
 
 def train(model, bs, num_epochs, lr, weight_decay=0., resize_size=224, seed=0,
-          num_workers=5):
+          num_workers=5, dataset_path="./data/oxford_pets", checkpoint_path=None):
 
     # Fixa todas as seeds
     seed_all(seed)
     # Usa cuda se disponível
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # Carrega o dataset
-    ds_train, ds_valid, class_weights = get_dataset("../data/oxford_pets", resize_size=resize_size)
+    ds_train, ds_valid, class_weights = get_dataset(dataset_path, resize_size=resize_size)
     # Truque para testar o código, fingimos que o dataset possui menos imagens
     #ds_train.indices = ds_train.indices[:5*256]
     model.to(device)
@@ -135,11 +135,11 @@ def train(model, bs, num_epochs, lr, weight_decay=0., resize_size=224, seed=0,
         }
 
         # Salva o estado atual
-        torch.save(checkpoint, "../data/checkpoints/M06/checkpoint.pt")
+        torch.save(checkpoint, f"{checkpoint_path}/checkpoint.pt")
 
         # Melhor modelo encontrado
         if loss_valid<best_loss:
-            torch.save(checkpoint, "../data/checkpoints/M06/best_model.pt")
+            torch.save(checkpoint, f"{checkpoint_path}/best_model.pt")
             best_loss = loss_valid
 
     model.to("cpu")

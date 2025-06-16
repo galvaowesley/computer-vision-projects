@@ -1,4 +1,11 @@
 # Pycache
 __pycache__/
+
 # Python bytecode files
 *.py[cod]
+
+# Dataset
+data
+
+# Checkpoint files
+checkpoints/
