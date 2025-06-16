@@ -21,7 +21,7 @@ class ObjectDetectionVisualizer:
     """
 
     @staticmethod
-    def show_images_grid(image_dir, image_names, n_rows=2, n_cols=5):
+    def show_images_grid(image_dir, image_names, n_rows=2, n_cols=5, save_pdf=False, pdf_path='./images_grid.pdf'):
         """
         Display a grid of images from a directory, sorted alphabetically.
 
@@ -30,6 +30,8 @@ class ObjectDetectionVisualizer:
             image_names (list): List of image filenames.
             n_rows (int): Number of rows in the grid.
             n_cols (int): Number of columns in the grid.
+            save_pdf (bool): If True, saves the grid as a PDF.
+            pdf_path (str): Path to save the PDF file.
         """
         sorted_names = sorted(image_names)
         fig, axs = plt.subplots(n_rows, n_cols, figsize=(3*n_cols, 3*n_rows))
@@ -39,6 +41,9 @@ class ObjectDetectionVisualizer:
             axs[i//n_cols, i%n_cols].set_title(name)
             axs[i//n_cols, i%n_cols].axis('off')
         plt.tight_layout()
+        plt.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.05)
+        if save_pdf:
+            fig.savefig(pdf_path, format='pdf', bbox_inches='tight')
         plt.show()
     
     @staticmethod
@@ -119,12 +124,12 @@ class ObjectDetectionVisualizer:
                     height = bottom_right[1] - top_left[1]
                     rect = patches.Rectangle(top_left, width, height, linewidth=2, edgecolor='lime', facecolor='none')
                     ax.add_patch(rect)
-                ax.set_title(f"Detected position: ({int(pos_img[0])}, {int(pos_img[1])})", fontsize=18)
+                ax.set_title(f"Detected position: ({int(pos_img[0])}, {int(pos_img[1])})", fontsize=20)
                 ax.axis('off')
         
         for i, model_name in enumerate(model_names):
             y_position = 1 - (i + 0.5) / n_models
-            fig.text(0.0, y_position, model_name, fontsize=16, rotation=90, 
+            fig.text(0.0, y_position, model_name, fontsize=20, rotation=90,
                     va='center', ha='left')
         plt.tight_layout()
         plt.subplots_adjust(left=0.008)  # espaço mínimo para os títulos
@@ -160,7 +165,7 @@ class ObjectDetectionVisualizer:
             img_resized = img.resize((224, 224))
             ax = axs[0, j]
             ax.imshow(img_resized)
-            ax.set_title(img_name, fontsize=14)
+            ax.set_title(img_name, fontsize=20)
             ax.axis('off')
         # Demais linhas: mapas de ativação
         
@@ -179,14 +184,14 @@ class ObjectDetectionVisualizer:
                 ax = axs[i+1, j]
                 ax.imshow(activation_map.cpu(), cmap='viridis')
                 ax.scatter([x], [y], color='red', s=120, marker='x')
-                ax.set_title(f"Max Activation Position:({x}, {y})", fontsize=17)
+                ax.set_title(f"Max Activation:({x}, {y})", fontsize=20)
                 ax.axis('off')
         # Adicionar nomes dos modelos como títulos do eixo y usando fig.text
         for i, model_name in enumerate(["Image"] + model_names):
             y_position = 1 - (i + 0.5) / (n_models+1)
-            fig.text(0.0, y_position, model_name, fontsize=18, rotation=90, va='center', ha='left')
+            fig.text(0.0, y_position, model_name, fontsize=20, rotation=90, va='center', ha='left')
         plt.tight_layout()
-        plt.subplots_adjust(left=0.04)
+        plt.subplots_adjust(left=0.008)
         if save_pdf:
             fig.savefig(pdf_path, format='pdf', bbox_inches='tight')
         plt.show()
