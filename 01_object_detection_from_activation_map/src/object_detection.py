@@ -36,14 +36,14 @@ class ImageTransforms:
 class ActivationMapResNet18(nn.Module):
     """
     Model to extract activation maps before global pooling from ResNet18.
-
-    Methods:
-        forward(x):
-            Forward pass to get activation map.
+    Allows passing a pre-loaded model (from checkpoint) in the constructor.
     """
-    def __init__(self):
+    def __init__(self, pretrained_model=None):
         super().__init__()
-        model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        if pretrained_model is not None:
+            model = pretrained_model
+        else:
+            model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
         model.eval()
         model.avgpool = nn.Identity()
         model.fc = nn.Identity()
@@ -64,14 +64,14 @@ class ActivationMapResNet18(nn.Module):
 class ActivationMapResNet50(nn.Module):
     """
     Model to extract activation maps before global pooling from ResNet50.
-
-    Methods:
-        forward(x):
-            Forward pass to get activation map.
+    Allows passing a pre-loaded model (from checkpoint) in the constructor.
     """
-    def __init__(self):
+    def __init__(self, pretrained_model=None):
         super().__init__()
-        model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+        if pretrained_model is not None:
+            model = pretrained_model
+        else:
+            model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
         model.eval()
         model.avgpool = nn.Identity()
         model.fc = nn.Identity()
@@ -119,3 +119,37 @@ def map_activation_to_original(activation_pos, original_size, resized_size=(448,
     x = int(activation_pos[1] * (resized_size[0] / map_size[0]) * factor_x)
     y = int(activation_pos[0] * (resized_size[1] / map_size[1]) * factor_y)
     return (x, y)
+
+import numpy as np
+from scipy.ndimage import label, find_objects
+
+def estimate_bounding_box_from_activation(activation_map, threshold_ratio=0.5):
+    """
+    Estimate a bounding box around the max activation using a threshold and connected components.
+
+    Args:
+        activation_map (torch.Tensor): 2D activation map.
+        threshold_ratio (float): Ratio of the max value to use as threshold (e.g., 0.5).
+
+    Returns:
+        (min_col, min_row, max_col, max_row): Bounding box coordinates in activation map space.
+    """
+    act_np = activation_map.cpu().numpy()
+    max_val = act_np.max()
+    threshold = max_val * threshold_ratio
+    mask = act_np >= threshold
+
+    # Label connected components
+    labeled, num_features = label(mask)
+    max_pos = np.unravel_index(np.argmax(act_np), act_np.shape)
+    label_of_max = labeled[max_pos]
+
+    if label_of_max == 0:
+        # fallback: just return the max pixel as a 1x1 box
+        return (max_pos[1], max_pos[0], max_pos[1], max_pos[0])
+
+    # Find the bounding box of the component containing the max
+    slices = find_objects(labeled == label_of_max)[0]
+    min_row, max_row = slices[0].start, slices[0].stop - 1
+    min_col, max_col = slices[1].start, slices[1].stop - 1
+    return (min_col, min_row, max_col, max_row)
