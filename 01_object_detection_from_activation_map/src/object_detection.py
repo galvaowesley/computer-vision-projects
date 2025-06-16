@@ -48,6 +48,7 @@ class ActivationMapResNet18(nn.Module):
         model.avgpool = nn.Identity()
         model.fc = nn.Identity()
         self.model = model
+        
     def forward(self, x):
         """
         Forward pass to get activation map.
@@ -123,7 +124,7 @@ def map_activation_to_original(activation_pos, original_size, resized_size=(448,
 import numpy as np
 from scipy.ndimage import label, find_objects
 
-def estimate_bounding_box_from_activation(activation_map, threshold_ratio=0.5):
+def estimate_bounding_box_from_activation_(activation_map, threshold_ratio=0.5):
     """
     Estimate a bounding box around the max activation using a threshold and connected components.
 
@@ -153,3 +154,61 @@ def estimate_bounding_box_from_activation(activation_map, threshold_ratio=0.5):
     min_row, max_row = slices[0].start, slices[0].stop - 1
     min_col, max_col = slices[1].start, slices[1].stop - 1
     return (min_col, min_row, max_col, max_row)
+
+
+import numpy as np
+from scipy.ndimage import label, find_objects
+
+def estimate_bounding_box_from_activation(activation_map, threshold_ratio=0.5):
+    """
+    Estimate a bounding box around the max activation using a threshold and connected components.
+    The bounding box is adjusted so that the max activation is the centroid of the box (ou o mais próximo possível).
+
+    Args:
+        activation_map (torch.Tensor): 2D activation map.
+        threshold_ratio (float): Ratio of the max value to use as threshold (e.g., 0.5).
+
+    Returns:
+        (min_col, min_row, max_col, max_row): Bounding box coordinates in activation map space.
+    """
+    act_np = activation_map.cpu().numpy()
+    max_val = act_np.max()
+    threshold = max_val * threshold_ratio
+    mask = act_np >= threshold
+
+    # Label connected components
+    labeled, num_features = label(mask)
+    max_pos = np.unravel_index(np.argmax(act_np), act_np.shape)
+    label_of_max = labeled[max_pos]
+
+    if label_of_max == 0:
+        # fallback: just return the max pixel as a 1x1 box
+        return (max_pos[1], max_pos[0], max_pos[1], max_pos[0])
+
+    # Find the bounding box of the component containing the max
+    slices = find_objects(labeled == label_of_max)[0]
+    min_row, max_row = slices[0].start, slices[0].stop - 1
+    min_col, max_col = slices[1].start, slices[1].stop - 1
+
+    # Ajustar a bounding box para que o máximo fique no centroide
+    box_height = max_row - min_row + 1
+    box_width = max_col - min_col + 1
+    cy, cx = max_pos
+    half_h = box_height // 2
+    half_w = box_width // 2
+    new_min_row = max(cy - half_h, 0)
+    new_max_row = min(cy + half_h, act_np.shape[0] - 1)
+    new_min_col = max(cx - half_w, 0)
+    new_max_col = min(cx + half_w, act_np.shape[1] - 1)
+    # Ajustar se a caixa ficou menor por causa das bordas
+    if (new_max_row - new_min_row + 1) < box_height:
+        if new_min_row == 0:
+            new_max_row = min(new_min_row + box_height - 1, act_np.shape[0] - 1)
+        else:
+            new_min_row = max(new_max_row - box_height + 1, 0)
+    if (new_max_col - new_min_col + 1) < box_width:
+        if new_min_col == 0:
+            new_max_col = min(new_min_col + box_width - 1, act_np.shape[1] - 1)
+        else:
+            new_min_col = max(new_max_col - box_width + 1, 0)
+    return (new_min_col, new_min_row, new_max_col, new_max_row)
