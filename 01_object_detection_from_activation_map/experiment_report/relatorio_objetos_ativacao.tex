@@ -7,6 +7,7 @@
 \usepackage{graphicx}
 \usepackage{dcolumn}
 \usepackage{bm}
+\usepackage{tabularx}
 \usepackage[breaklinks, hidelinks, colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
 
 \begin{document}
@@ -48,6 +49,24 @@ Foram empregados os modelos ResNet18 e ResNet50, nas seguintes variantes:
     \item Refinados (fine-tuned) no Oxford Pets
 \end{itemize}
 
+
+\begin{table}[h]
+\caption{\label{tab:modelos}
+Descrição dos modelos avaliados.}
+\begin{tabularx}{\linewidth}{l X}
+\hline
+Sigla         & Descrição \\
+\hline
+resnet18-IM   & ResNet18 treinada no ImageNet \\
+resnet50-IM   & ResNet50 treinada no ImageNet \\
+resnet18-SC   & ResNet18 treinada do zero no Oxford Pets \\
+resnet18-TL   & ResNet18 pré-treinada no ImageNet e refinada no Oxford Pets \\
+resnet50-SC   & ResNet50 treinada do zero no Oxford Pets \\
+resnet50-TL   & ResNet50 pré-treinada no ImageNet e refinada no Oxford Pets \\
+\hline
+\end{tabularx}
+\end{table}
+
 \subsection{Procedimento Experimental}
 \begin{enumerate}
     \item As imagens foram redimensionadas para $2 \times 224 \times 2 \times 224$ pixels.
@@ -85,6 +104,25 @@ Os resultados qualitativos mostram que:
     \includegraphics[width=0.98\textwidth]{imgs/detection_grid.pdf}
     \caption{Localização qualitativa dos cães nas imagens originais.}
 \end{figure*}
+
+\begin{table*}[b]
+\caption{\label{tab:detecao}
+Taxa de detecção dos modelos em cada imagem de teste.}
+\begin{ruledtabular}
+\begin{tabular}{lccccccccccc}
+Modelo & 01 & 02 & 03 & 04 & 05 & 06 & 07 & 08 & 09 & 10 & Taxa de detecção por modelo (\%) \\
+\hline
+resnet18-IM   & 1 & 1 & 0 & 1 & 0 & 1 & 1 & 0 & 1 & 1 & 70 \\
+resnet50-IM   & 1 & 0 & 1 & 0 & 0 & 1 & 1 & 0 & 0 & 1 & 50 \\
+resnet18-SC   & 0 & 0 & 0 & 0 & 0 & 1 & 0 & 1 & 1 & 0 & 30 \\
+resnet18-TL   & 1 & 0 & 0 & 0 & 0 & 1 & 0 & 1 & 1 & 0 & 40 \\
+resnet50-SC   & 1 & 0 & 0 & 1 & 0 & 1 & 0 & 1 & 1 & 0 & 50 \\
+resnet50-TL   & 1 & 0 & 0 & 0 & 0 & 1 & 0 & 1 & 0 & 0 & 30 \\
+\hline
+Taxa de detecção por imagem (\%) & 83 & 17 & 17 & 33 & 0 & 100 & 33 & 67 & 67 & 33 & \\
+\end{tabular}
+\end{ruledtabular}
+\end{table*}
 
 \section{Conclusões}
 O uso de mapas de ativação permite identificar regiões relevantes para a detecção de objetos, mesmo em cenários onde o objeto ocupa uma pequena parte da imagem. Modelos refinados apresentam desempenho superior, evidenciando a importância do ajuste fino para o domínio de interesse. O método é promissor para aplicações que exigem interpretabilidade e localização precisa.

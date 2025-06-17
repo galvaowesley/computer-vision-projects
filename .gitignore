@@ -10,6 +10,7 @@ data
 # Checkpoint files
 checkpoints/
 
+
 # Latex files
 *.aux
 *.blg
