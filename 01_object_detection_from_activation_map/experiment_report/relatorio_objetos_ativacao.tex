@@ -48,7 +48,11 @@
 
 \section{Introdução}
 
-A detecção de objetos é uma tarefa fundamental em Visão Computacional. Métodos baseados em mapas de ativação de redes neurais profundas permitem identificar regiões relevantes em imagens, mesmo quando o objeto de interesse ocupa uma pequena área. Este trabalho investiga a aplicação de mapas de ativação para localizar cães em imagens genéricas, utilizando variantes da arquitetura ResNet.
+A detecção de objetos é uma das tarefas centrais da Visão Computacional, com impacto direto em áreas como monitoramento, veículos autônomos, robótica e análise de imagens biomédicas. O avanço das redes neurais convolucionais (CNNs) permitiu grandes saltos de desempenho nessa tarefa, mas também trouxe desafios de interpretabilidade: entender por que e onde o modelo "enxerga" o objeto na imagem. Mapas de ativação, extraídos das camadas internas das CNNs, são ferramentas importantes para visualizar e interpretar as regiões da imagem que mais influenciam a decisão do modelo, tornando o processo mais transparente e confiável.
+
+Outra estratégia fundamental para melhorar o desempenho dos modelos é o uso de transfer learning, que consiste em aproveitar representações aprendidas em grandes bases de dados, como o ImageNet, e adaptá-las para tarefas ou domínios específicos. Isso permite não só acelerar o treinamento, mas também obter melhores resultados em cenários com poucos dados rotulados.
+
+Neste trabalho, investigou-se a detecção de cães em imagens genéricas utilizando mapas de ativação de variantes da arquitetura ResNet, avaliando também o impacto do transfer learning e do refinamento dos modelos para o domínio de interesse.
 
 \subsection{Motivação}
 
@@ -75,11 +79,7 @@ Algumas imagens apresentam oclusão parcial dos cães por elementos do ambiente 
 \end{figure}
 
 \subsection{Modelos Utilizados}
-Foram empregados os modelos ResNet18 e ResNet50, nas seguintes variantes:
-\begin{itemize}
-    \item Pré-treinados no ImageNet
-    \item Refinados (fine-tuned) no Oxford Pets
-\end{itemize}
+Foram empregados os modelos ResNet18 e ResNet50, nas variantes mostradas na Tabela \ref{tab:modelos}. As ResNets são conhecidas por sua capacidade de aprender representações profundas e foram escolhidas por sua eficácia em tarefas de classificação e detecção de objetos. A ResNet18 é uma versão mais leve, enquanto a ResNet50 possui maior profundidade e complexidade, permitindo capturar características mais sutis nas imagens.
 
 
 \begin{table}[h]
@@ -100,13 +100,23 @@ ResNet50-TL   & ResNet50 pré-treinada no ImageNet e refinada no Oxford Pets \\
 \end{table}
 
 \subsection{Procedimento Experimental}
-\begin{enumerate}
-    \item As imagens foram redimensionadas para $2 \times 224 \times 2 \times 224$ pixels.
-    \item As ativações da última camada convolucional antes do pooling global foram extraídas.
-    \item A posição do valor máximo no mapa de ativação (tamanho $14 \times 14$) foi detectada.
-    \item A posição correspondente foi mapeada para a imagem original.
-    \item O procedimento foi repetido para todas as variantes dos modelos.
-\end{enumerate}
+    
+    O procedimento experimental foi cuidadosamente estruturado para garantir reprodutibilidade e avaliação justa dos modelos. As principais etapas e decisões do pipeline são:
+    
+    \begin{itemize}
+        \item \textbf{Divisão dos dados:} O Oxford-IIIT Pet Dataset foi dividido em treino (80\%) e validação (20\%), com embaralhamento e semente fixa para garantir reprodutibilidade. As imagens de treino passaram por recorte aleatório redimensionado para 224x224, espelhamento horizontal e normalização. Para validação, foi feito redimensionamento para 256x256, crop central 224x224 e normalização.
+        \item \textbf{Modelos Utilizados:} Foram avaliadas as arquiteturas ResNet-18 e ResNet-50, sempre com a última camada ajustada para duas classes. O treinamento do zero foi feito por 300 épocas, com batch size 256, learning rate $1\times10^{-2}$, weight decay $1\times10^{-2}$, otimizador SGD com momentum 0.9 e scheduler PolynomialLR. Para fine-tuning, os modelos carregaram pesos do ImageNet e foram treinados por 5 épocas, com weight decay $1\times10^{-3}$ e os demais parâmetros iguais. No fine-tuning, todos os parâmetros do modelo foram ajustados, não apenas as últimas camadas.
+        \item \textbf{Critério de Avaliação:} A função de perda utilizada é CrossEntropyLoss ponderada pelas proporções das classes. A acurácia é monitorada a cada época. Checkpoints foram salvos a cada época e também para o melhor modelo na validação.
+
+    \end{itemize}
+
+% Detalhes do procedimento experimental
+
+O treinamento dos modelos ResNet-18 e ResNet-50 foi realizado utilizando a biblioteca PyTorch. Para ambos os modelos, as imagens foram redimensionadas para 224x224 pixels e o conjunto de dados foi dividido aleatoriamente, com 80\% das imagens destinadas ao treinamento e 20\% à validação, utilizando uma semente fixa para garantir consistência nos resultados.
+
+Os modelos ResNet-18 e ResNet-50 tiveram sua última camada totalmente conectada (fc) ajustada para realizar a classificação binária (gato/cachorro). Foram conduzidos dois tipos de experimentos: treinamento do zero, com pesos inicializados aleatoriamente, e fine-tuning, em que os modelos foram inicializados com pesos pré-treinados no ImageNet e todos os parâmetros foram ajustados durante o treinamento (full fine-tuning). Para o treinamento do zero, foram utilizadas 300 épocas, enquanto para o fine-tuning foram realizadas 5 épocas, sempre com batch size de 256, taxa de aprendizado de $1 \times 10^{-2}$ e weight decay de $1 \times 10^{-2}$ (ou $1 \times 10^{-3}$ no fine-tuning).
+
+Durante o treinamento, checkpoints foram salvos ao final de cada época, bem como o melhor modelo encontrado com base na menor loss de validação. 
 
 \subsection{Implementação}
 O código foi implementado em Python, utilizando PyTorch e torchvision. Os notebooks documentam todo o pipeline, desde o download dos dados, treinamento/refinamento dos modelos, até a extração e visualização dos mapas de ativação.
@@ -126,6 +136,33 @@ O projeto foi estruturado em módulos Python e notebooks Jupyter para garantir r
 Essa organização modular permite fácil expansão para novos experimentos e garante que cada etapa do pipeline possa ser reproduzida e auditada separadamente.
 
 \subsection{Estrutura do Projeto}
+
+\subsection{Detecção do ponto de máximo e estimativa de bounding box}
+
+A detecção da posição mais relevante para o modelo é feita localizando o valor máximo no mapa de ativação 2D gerado pela última camada convolucional. Seja $A \in \mathbb{R}^{h \times w}$ o mapa de ativação, onde $h$ e $w$ são, respectivamente, a altura e a largura do mapa. A posição do máximo é $(i^*, j^*) = \arg\max_{i,j} A_{i,j}$. Para mapear essa posição para a imagem de entrada de $224\times224$ pixels, utiliza-se uma transformação linear proporcional ao tamanho do mapa e da imagem: $x = \lfloor j^* \cdot (224/w) \rfloor$, $y = \lfloor i^* \cdot (224/h) \rfloor$.
+
+A estimativa da bounding box é feita aplicando um limiar $t = \alpha \cdot \max(A)$ para gerar uma máscara binária. Nos experimento foi usado $\alpha=0.7$. São identificados os componentes conexos na máscara, e seleciona-se o componente que contém o máximo. A menor caixa retangular que engloba esse componente define a bounding box no espaço do mapa de ativação, que é então mapeada para as coordenadas da imagem de entrada usando a mesma transformação linear.
+
+\subsubsection{Processo de estimativa da bounding box}
+
+A estimativa da bounding box segue os seguintes passos:
+
+1. Calcula-se um limiar como uma fração do valor máximo do mapa de ativação ($t = \alpha \cdot \max(A)$). Por exemplo, se $\alpha=0.5$, o limiar é metade do valor máximo.
+2. Gera-se uma máscara binária, onde cada pixel recebe 1 se $A_{i,j} \geq t$ e 0 caso contrário. Assim, só as regiões mais ativas permanecem.
+3. Identificam-se os componentes conexos (aglomerados de pixels 1) na máscara. Cada região conectada recebe um rótulo diferente.
+4. Localiza-se a posição do valor máximo no mapa e identifica-se qual componente conexo contém esse máximo.
+5. Encontra-se a menor caixa retangular que engloba todo o componente do máximo. Essa caixa é ajustada para centralizar o máximo, respeitando os limites do mapa.
+6. Por fim, as coordenadas da bounding box são retornadas no espaço do mapa de ativação e depois mapeadas para a imagem original.
+
+Esse processo garante que a bounding box englobe a região mais relevante do mapa de ativação, centrada no ponto de maior resposta do modelo.
+
+\subsection{Avaliação qualitativa e visualização dos resultados}
+
+A avaliação qualitativa dos modelos foi feita por meio da visualização dos mapas de ativação, da marcação do ponto de máximo transferido para a imagem original e da exibição das bounding boxes estimadas. Para cada imagem de teste, o ponto de máxima ativação foi projetado sobre a imagem 224x224, permitindo verificar visualmente se a região destacada corresponde ao corpo do animal. As bounding boxes, obtidas a partir do mapa de ativação, também foram desenhadas sobre as imagens para facilitar a análise.
+
+Além das visualizações individuais, foram geradas grades (grids) comparando os resultados de diferentes modelos e imagens, tanto para os mapas de ativação quanto para as detecções na imagem original. Essas visualizações permitem comparar, de forma direta, a precisão e o padrão de ativação de cada modelo.
+
+A taxa de acerto apresentada na Tabela~\ref{tab:detecao} foi calculada considerando como acerto os casos em que a localização do ponto de máximo recai sobre o corpo do animal ou muito próxima a ele. Essa avaliação foi feita manualmente, observando a sobreposição entre a região detectada e o animal na imagem.
 
 \section{Resultados}
 
@@ -175,8 +212,9 @@ Taxa de detecção por imagem (\%) & 83 & 17 & 17 & 33 & 0 & 100 & 33 & 67 & 67 
 \end{ruledtabular}
 \end{table*}
 
-\section{Conclusões}
-O uso de mapas de ativação permite identificar regiões relevantes para a detecção de objetos, mesmo em cenários onde o objeto ocupa uma pequena parte da imagem. Modelos refinados apresentam desempenho superior, evidenciando a importância do ajuste fino para o domínio de interesse. O método é promissor para aplicações que exigem interpretabilidade e localização precisa.
+\section{Conclusão}
+
+Os resultados mostraram que os modelos pré-treinados no ImageNet apresentaram melhor desempenho na detecção dos animais e produziram mapas de ativação mais focados, mesmo sem refinamento adicional. O transfer learning e o treinamento do zero não superaram os pré-treinados na ImageNet, indicando que as representações aprendidas em grandes bases são mais eficazes para este tipo de tarefa. O uso de mapas de ativação se mostrou útil para interpretar e visualizar as decisões do modelo, sendo uma abordagem simples e prática para análise qualitativa em visão computacional.
 
 \bibliography{apssamp}
 
