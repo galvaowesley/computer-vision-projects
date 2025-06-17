@@ -1,14 +1,34 @@
 \documentclass[%
  reprint,
+%superscriptaddress,
+%groupedaddress,
+%unsortedaddress,
+%runinaddress,
+%frontmatterverbose, 
+%preprint,
+%preprintnumbers,
+%nofootinbib,
+%nobibnotes,
+%bibnotes,
  amsmath,amssymb,
  aps,
+%pra,
+%prb,
+%rmp,
+%prstab,
+%prstper,
+%floatfix,
 ]{revtex4-2}
 
 \usepackage{graphicx}
 \usepackage{dcolumn}
 \usepackage{bm}
 \usepackage{tabularx}
-\usepackage[breaklinks, hidelinks, colorlinks=true,linkcolor=blue,citecolor=blue]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage[breaklinks, hidelinks, colorlinks=true,linkcolor=blue,citecolor=blue]
+{hyperref}
 
 \begin{document}
 
@@ -20,16 +40,19 @@
 \date{\today}
 
 \begin{abstract}
-Neste trabalho, exploramos a detecção de objetos em imagens utilizando mapas de ativação de redes neurais convolucionais, com foco na localização de cães em imagens onde ocupam uma pequena parte da cena. Foram utilizados modelos ResNet18 e ResNet50, tanto pré-treinados no ImageNet quanto refinados no Oxford Pets. Os resultados qualitativos mostram o potencial do método para identificar regiões de interesse mesmo em cenários desafiadores.
+    A detecção de objetos em imagens é uma das tarefas mais utilizadas em Visão Computacional, sendo essencial para aplicações como monitoramento e robótica. Existem alguns desafios inerentes a essa tarefa, tais como a localização precisa do objeto de interesse, e base de dados correspondentes ao domínio que se deseja atuar. Neste trabalho, é explorada a detecção de cães em imagens genéricas utilizando mapas de ativação de Redes Neurais Convolucionais (CNNs) como ResNet18 e ResNet50. Avaliou-se também o desempenho qualitativo de modelos pré-treinados no ImageNet e refinados no Oxford Pets. Os resultados mostram que, mesmo em imagens onde o cão ocupa uma pequena parte da cena, os mapas de ativação conseguem identificar regiões relevantes, permitindo a localização estimada do animal através de um bounding box. Por outro lado, os modelos pré-carregados no ImageNet, sem refinamento, apresentaram o melhor desempenho qualitativo, em contraste com os modelos treinados do zero no Oxford Pets e refinados no mesmo dataset.
+
 \end{abstract}
 
 \maketitle
 
 \section{Introdução}
-A detecção de objetos é uma tarefa fundamental em visão computacional. Métodos baseados em mapas de ativação de redes neurais profundas permitem identificar regiões relevantes em imagens, mesmo quando o objeto de interesse ocupa uma pequena área. Este trabalho investiga a aplicação de mapas de ativação para localizar cães em imagens genéricas, utilizando variantes da arquitetura ResNet.
+
+A detecção de objetos é uma tarefa fundamental em Visão Computacional. Métodos baseados em mapas de ativação de redes neurais profundas permitem identificar regiões relevantes em imagens, mesmo quando o objeto de interesse ocupa uma pequena área. Este trabalho investiga a aplicação de mapas de ativação para localizar cães em imagens genéricas, utilizando variantes da arquitetura ResNet.
 
 \subsection{Motivação}
-O uso de mapas de ativação é importante pois permite interpretar e visualizar quais regiões da imagem contribuem para a decisão do modelo, sendo útil em aplicações onde a localização precisa do objeto é relevante, como monitoramento, robótica e análise de imagens médicas.
+
+O uso de mapas de ativação é importante pois permite interpretar e visualizar quais regiões da imagem contribuem para a decisão do modelo, sendo útil em aplicações onde a localização precisa do objeto é relevante. Além disso, o uso de Transfer Learning (TL) e modelos pré-treinados pode melhorar o desempenho em tarefas específicas, como a detecção de cães em imagens onde o animal ocupa uma pequena parte da cena.
 
 \section{Objetivos}
 \begin{enumerate}
@@ -40,7 +63,16 @@ O uso de mapas de ativação é importante pois permite interpretar e visualizar
 
 \section{Metodologia}
 \subsection{Coleta de Dados}
-Foram coletadas 10 imagens da internet contendo cães em diferentes cenários, garantindo que o animal não ocupasse a maior parte da imagem.
+
+Foram coletadas 10 imagens da internet contendo cães em diferentes cenários, garantindo que o animal não ocupasse a maior parte da imagem. O dataset, ilustrado na \ref{fig:dogs_image_grid} inclui cenários com diferentes níveis de complexidade visual. Algumas imagens apresentam backgrounds simples e homogêneos, enquanto outras contêm ambientes complexos com múltiplos elementos visuais que podem competir pela atenção dos mapas de ativação. 
+
+Algumas imagens apresentam oclusão parcial dos cães por elementos do ambiente ou outros objetos, criando desafios adicionais para localização precisa. Este fator contribui para a variabilidade e complexidade do dataset, tornando-o adequado para avaliar a robustez dos modelos de detecção.
+
+\begin{figure}[htb]
+\label{fig:dogs_image_grid}
+\includegraphics[width=\columnwidth]{imgs/dogs_image_grid.pdf}
+\caption{Exemplo das imagens utilizadas nos experimentos.}
+\end{figure}
 
 \subsection{Modelos Utilizados}
 Foram empregados os modelos ResNet18 e ResNet50, nas seguintes variantes:
@@ -57,12 +89,12 @@ Descrição dos modelos avaliados.}
 \hline
 Sigla         & Descrição \\
 \hline
-resnet18-IM   & ResNet18 treinada no ImageNet \\
-resnet50-IM   & ResNet50 treinada no ImageNet \\
-resnet18-SC   & ResNet18 treinada do zero no Oxford Pets \\
-resnet18-TL   & ResNet18 pré-treinada no ImageNet e refinada no Oxford Pets \\
-resnet50-SC   & ResNet50 treinada do zero no Oxford Pets \\
-resnet50-TL   & ResNet50 pré-treinada no ImageNet e refinada no Oxford Pets \\
+ResNet18-IM   & ResNet18 treinada no ImageNet \\
+ResNet50-IM   & ResNet50 treinada no ImageNet \\
+ResNet18-SC   & ResNet18 treinada do zero no Oxford Pets \\
+ResNet18-TL   & ResNet18 pré-treinada no ImageNet e refinada no Oxford Pets \\
+ResNet50-SC   & ResNet50 treinada do zero no Oxford Pets \\
+ResNet50-TL   & ResNet50 pré-treinada no ImageNet e refinada no Oxford Pets \\
 \hline
 \end{tabularx}
 \end{table}
@@ -79,30 +111,47 @@ resnet50-TL   & ResNet50 pré-treinada no ImageNet e refinada no Oxford Pets \\
 \subsection{Implementação}
 O código foi implementado em Python, utilizando PyTorch e torchvision. Os notebooks documentam todo o pipeline, desde o download dos dados, treinamento/refinamento dos modelos, até a extração e visualização dos mapas de ativação.
 
-\section{Resultados}
-Os resultados qualitativos mostram que:
+\subsection{Organização do Projeto e Pipeline Experimental}
+
+O projeto foi estruturado em módulos Python e notebooks Jupyter para garantir reprodutibilidade e clareza nos experimentos. O pipeline é composto pelas seguintes etapas:
+
 \begin{itemize}
-    \item Modelos pré-treinados no ImageNet conseguem localizar regiões de interesse, mas nem sempre coincidem com o cão.
-    \item Modelos refinados no Oxford Pets apresentam melhor desempenho na localização do animal, mesmo em imagens desafiadoras.
-    \item A ResNet50, por ser mais profunda, tende a produzir mapas de ativação mais focados.
+    \item \textbf{Preparação dos Dados:} O módulo \verb|src/dataset.py| implementa o carregamento e pré-processamento do Oxford-IIIT Pet Dataset, incluindo normalização, divisão em treino e validação, e transformações específicas para treinamento e avaliação.
+    \item \textbf{Treinamento e Fine-tuning dos Modelos:} O notebook \verb|01_train_and_fine-tune_resnet.ipynb| conduz o treinamento das arquiteturas ResNet-18 e ResNet-50, tanto do zero quanto via transfer learning a partir de pesos pré-treinados no ImageNet. O módulo \verb|src/train.py| gerencia o ciclo de treinamento, validação e salvamento dos melhores checkpoints.
+    \item \textbf{Detecção de Objetos via Mapas de Ativação:} O módulo \verb|src/object_detection.py| permite extrair mapas de ativação das redes treinadas, localizar o ponto de máxima ativação e mapear essa posição para coordenadas da imagem original. Também permite estimar bounding boxes a partir dos mapas de ativação.
+    \item \textbf{Visualização e Avaliação Qualitativa:} O módulo \verb|src/visualization.py| e o notebook \verb|02_object_detection_with_activation_maps.ipynb| fornecem ferramentas para visualizar os resultados dos modelos, comparando qualitativamente a capacidade de localização dos diferentes métodos em imagens externas ao Oxford Pets.
+    \item \textbf{Relatório e Análise:} Os resultados e discussões são compilados no documento LaTeX \verb|relatorio_objetos_ativacao.tex|, incluindo tabelas de desempenho e análise crítica dos métodos.
 \end{itemize}
 
-\begin{figure}
-\includegraphics[width=\columnwidth]{imgs/dogs_image_grid.pdf}
-\caption{Exemplo das imagens utilizadas nos experimentos.}
-\end{figure}
+Essa organização modular permite fácil expansão para novos experimentos e garante que cada etapa do pipeline possa ser reproduzida e auditada separadamente.
 
-% Figura de página inteira (largura total)
+\subsection{Estrutura do Projeto}
+
+\section{Resultados}
+
+Os resultados de taxa de detecção da Tabela \ref{tab:detecao} mostram alguns padrões contra-intuitivos. O modelo ResNet18-IM  alcançou a melhor taxa de detecção (70\%), seguido pelos modelos ResNet50-IM e ResNet50-SC, ambos com 50\%). Por outro lado, os modelos com refinamento apresentaram desempenho inferior aos respectivos modelos base, com ResNet50-TL sendo o pior, com apenas 30\% de taxa de detecção.
+
+A análise por imagem revela pela Figura \ref{fig:detection_grid} revela heterogeneidade significativa no desafio de detecção. A imagem 06 foi detectada por todos os modelos (100\%), mesmo que haja uma confusão visual entre as texturas do aninal e do solo. A imagem 05, por sua vez não foi detectada por nenhum modelo, e a mesma sofre do mesmo fenônemo de oclusão do animal, devido às texturas do pêlo e do tapete. As imagens 02, 09 e 10 apresentam animais distantes, trazendo uma dificuldade maior para os modelos. Mesmo assim, a imagem 09 foi detectada por 67\% dos modelos, provavelmente devido ao alto contraste entre o cão e o fundo.
+
+Os modelos que foram treinados do zero no Oxford Pets e os refinados no mesmo dataset não apresentaram significativa melhoria em relação aos modelos pré-treinados no ImageNet. Isso sugere que a estratégia escolhida de refinamento, sobre todo o modelo e não apenas nas camadas finais, pode não ter sido a mais eficaz para este caso específico. Isso fica claro na avaliação do tamanho do bounding box, onde os modelos pré-treinados no ImageNet apresentaram caixas mais precisas e localizadas, enquanto os modelos refinados mostraram caixas mais difusas e menos precisas.
+
+A Figura \ref{fig:activation_maps} ilustra os mapas de ativação gerados pelos diferentes modelos, evidenciando como cada um ativa regiões que contribuem para a detecção do cão nas imagens. É notório que os modelos pré-treinados no ImageNet apresentam mapas de ativação mais focados e localizados, isto é, criando regiões de separação mais evidentes sobre objetos de interesse de primeiro plano e fundo. Contudo, os demais modelos que fazem uso das características do Oxford Pets, apresentam mapas de ativação mais difusos, com muitas regiões ativadas, o que pode indicar uma dificuldade maior em localizar o cão nas imagens.
+
+
 \begin{figure*}[htb]
     \centering
+    \label{fig:activation_maps}
     \includegraphics[width=0.98\textwidth]{imgs/activation_maps.pdf}
-    \caption{Exemplo de mapas de ativação gerados pelos diferentes modelos.}
+    \caption{Exemplo de mapas de ativação gerados pelos diferentes modelos que foram utilizados para detecção de cães nas imagens. Cada linha representa um modelo diferente, e cada coluna corresponde a uma imagem específica. Os mapas de ativação são sobrepostos às imagens originais, destacando as regiões que o modelo considera relevantes para a detecção do cão.}
 \end{figure*}
 
+
+
 \begin{figure*}[htb]
     \centering
+    \label{fig:detection_grid}
     \includegraphics[width=0.98\textwidth]{imgs/detection_grid.pdf}
-    \caption{Localização qualitativa dos cães nas imagens originais.}
+    \caption{Localização estimada dos cães nas imagens originais e bounding boxes. Cada linha representa um modelo diferente, e cada coluna corresponde a uma imagem específica. As caixas delimitadoras são desenhadas em torno da região de maior ativação detectada pelo modelo. \ref{tab:detecao}.}
 \end{figure*}
 
 \begin{table*}[b]
@@ -110,6 +159,8 @@ Os resultados qualitativos mostram que:
 Taxa de detecção dos modelos em cada imagem de teste.}
 \begin{ruledtabular}
 \begin{tabular}{lccccccccccc}
+\hline
+ & \multicolumn{10}{c}{Imagens} & \\
 Modelo & 01 & 02 & 03 & 04 & 05 & 06 & 07 & 08 & 09 & 10 & Taxa de detecção por modelo (\%) \\
 \hline
 resnet18-IM   & 1 & 1 & 0 & 1 & 0 & 1 & 1 & 0 & 1 & 1 & 70 \\
