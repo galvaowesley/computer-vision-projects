@@ -4,7 +4,6 @@ from torch import nn
 
 
 def conv_norm(in_channels, out_channels, kernel_size=3, act=True):
-
     """
     Create a convolutional layer followed by batch normalization and optional ReLU activation.
     Args:
@@ -16,16 +15,21 @@ def conv_norm(in_channels, out_channels, kernel_size=3, act=True):
         nn.Sequential: Sequential module with Conv2d, BatchNorm2d, and optional ReLU.
     """
     layer = [
-        nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, 
-                padding=kernel_size//2, bias=False),
-        nn.BatchNorm2d(out_channels)
+        nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            padding=kernel_size // 2,
+            bias=False,
+        ),
+        nn.BatchNorm2d(out_channels),
     ]
     if act:
         layer += [nn.ReLU()]
     return nn.Sequential(*layer)
 
-class DecoderBlock(nn.Module):
 
+class DecoderBlock(nn.Module):
     """
     Decoder block that combines encoder and decoder activations, adjusting resolution and channels.
     Args:
@@ -36,7 +40,9 @@ class DecoderBlock(nn.Module):
 
     def __init__(self, enc_channels, dec_channels, extra_convs=False):
         super().__init__()
-        self.channel_adjust = conv_norm(enc_channels, dec_channels, kernel_size=1, act=False)
+        self.channel_adjust = conv_norm(
+            enc_channels, dec_channels, kernel_size=1, act=False
+        )
         mix_layers = [conv_norm(dec_channels, dec_channels)]
         if extra_convs:
             mix_layers.append(conv_norm(dec_channels, dec_channels))
@@ -56,8 +62,8 @@ class DecoderBlock(nn.Module):
         y = x_dec_int + x_enc_ad
         return self.mix(y)
 
-class Decoder(nn.Module):
 
+class Decoder(nn.Module):
     """
     Decoder module that reconstructs segmentation mask from encoder features.
     Args:
@@ -72,7 +78,9 @@ class Decoder(nn.Module):
         self.middle = conv_norm(encoder_channels_list[0], decoder_channels)
         blocks = []
         for channels in encoder_channels_list[1:]:
-            blocks.append(DecoderBlock(channels, decoder_channels, extra_convs=extra_convs))
+            blocks.append(
+                DecoderBlock(channels, decoder_channels, extra_convs=extra_convs)
+            )
         self.blocks = nn.ModuleList(blocks)
 
     def forward(self, features):
@@ -86,11 +94,11 @@ class Decoder(nn.Module):
         features = features[::-1]
         x = self.middle(features[0])
         for idx in range(1, len(features)):
-            x = self.blocks[idx-1](features[idx], x)
+            x = self.blocks[idx - 1](features[idx], x)
         return x
 
-class EncoderDecoder(nn.Module):
 
+class EncoderDecoder(nn.Module):
     """
     EncoderDecoder architecture that samples activations from a ResNet encoder and reconstructs segmentation masks.
     Args:
@@ -101,15 +109,25 @@ class EncoderDecoder(nn.Module):
         extra_convs (bool, optional): Whether to add extra conv layers in decoder blocks.
     """
 
-    def __init__(self, resnet_encoder, decoder_channels, num_classes, 
-                 use_strides=[2, 4, 8, 16, 32], extra_convs=False):
+    def __init__(
+        self,
+        resnet_encoder,
+        decoder_channels,
+        num_classes,
+        use_strides=[2, 4, 8, 16, 32],
+        extra_convs=False,
+    ):
         super().__init__()
         self.resnet_encoder = resnet_encoder
         self.use_strides = use_strides
         all_strides = [2, 4, 8, 16, 32]
         all_channels = self.get_channels()
-        selected_channels = [ch for ch, s in zip(all_channels, all_strides) if s in use_strides]
-        self.decoder = Decoder(selected_channels, decoder_channels, extra_convs=extra_convs)
+        selected_channels = [
+            ch for ch, s in zip(all_channels, all_strides) if s in use_strides
+        ]
+        self.decoder = Decoder(
+            selected_channels, decoder_channels, extra_convs=extra_convs
+        )
         self.classification = nn.Conv2d(decoder_channels, num_classes, 3, padding=1)
 
     def get_features(self, x):
@@ -167,11 +185,12 @@ class EncoderDecoder(nn.Module):
         all_features = self.get_features(x)
         all_strides = [2, 4, 8, 16, 32]
         features = [
-            feat for feat, stride in zip(all_features, all_strides) 
+            feat
+            for feat, stride in zip(all_features, all_strides)
             if stride in self.use_strides
         ]
         x = self.decoder(features)
-        if x.shape[-2:]!=in_shape:
+        if x.shape[-2:] != in_shape:
             x = F.interpolate(x, size=in_shape, mode="nearest")
         x = self.classification(x)
         return x

@@ -27,28 +27,25 @@ import torchvision.transforms.v2 as transf
 
 
 def seed_all(seed):
-    """Semente para o pytorch, numpy e python."""
-    torch.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
     """
     Set random seed for PyTorch, NumPy, and Python random.
     Args:
         seed (int): Seed value.
     """
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
 
 
 def show_log(logger, save_path=None):
-    """Plota métricas em um notebook e salva o gráfico se save_path for fornecido."""
-    epochs, losses_train, losses_valid, accs = zip(*logger)
-    # Calcular IoU para cada época (já está em accs, mas vamos garantir)
-    ious = [perf for _, _, _, perf in logger]
     """
     Plot training and validation metrics in a notebook and optionally save the figure.
     Args:
         logger (list): List of tuples (epoch, train_loss, valid_loss, perf).
         save_path (str, optional): Path to save the figure.
     """
+    epochs, losses_train, losses_valid, accs = zip(*logger)
+    ious = [perf for _, _, _, perf in logger]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 3))
     ax1.plot(epochs, losses_train, "-o", ms=2, label="Train loss")
@@ -74,12 +71,6 @@ def show_log(logger, save_path=None):
 
 
 def train_step(model, dl_train, optim, loss_func, scheduler, device):
-    """Executa uma época de treinamento."""
-    # Coloca o modelo em modo treinamento. Neste notebook não fará diferença,
-    # mas algumas camadas (batchnorm, dropout) precisam disso
-    model.train()
-    # Armazenará a média das losses de todos os bathces
-    loss_log = 0.0
     """
     Perform one training epoch.
     Args:
@@ -92,6 +83,8 @@ def train_step(model, dl_train, optim, loss_func, scheduler, device):
     Returns:
         float: Average training loss for the epoch.
     """
+    model.train()
+    loss_log = 0.0
     for imgs, targets in dl_train:
         imgs = imgs.to(device)
         targets = targets.to(device)
@@ -116,11 +109,6 @@ def train_step(model, dl_train, optim, loss_func, scheduler, device):
 # Anotador para evitar que gradientes sejam registrados dentro da função
 @torch.no_grad()
 def valid_step(model, dl_valid, loss_func, perf_func, device):
-    # Coloca o modelo em modo de validação.
-    model.eval()
-    # Variáveis que armazenarão a loss e a acurácia
-    loss_log = 0.0
-    perf_log = 0.0
     """
     Perform one validation epoch.
     Args:
@@ -132,6 +120,9 @@ def valid_step(model, dl_valid, loss_func, perf_func, device):
     Returns:
         tuple: (average validation loss, average performance metric)
     """
+    model.eval()
+    loss_log = 0.0
+    perf_log = 0.0
     for imgs, targets in dl_valid:
         imgs = imgs.to(device)
         targets = targets.to(device)
@@ -152,9 +143,6 @@ def valid_step(model, dl_valid, loss_func, perf_func, device):
 
 @torch.no_grad()
 def iou(scores, targets):
-    """Função que calcula a Intersecção sobre a União entre o resultado
-    da rede e o rótulo conhecido.
-    """
     """
     Calculate Intersection over Union (IoU) between prediction and ground truth.
     Args:
@@ -198,15 +186,13 @@ def iou(scores, targets):
 
 
 def setup_wandb(args, checkpoint_dir):
-    """Configura e inicializa o wandb."""
-    # Cria o diretório do checkpoint se não existir
-    os.makedirs(checkpoint_dir, exist_ok=True)
     """
     Configure and initialize Weights & Biases (wandb).
     Args:
         args (object): Arguments object with wandb settings.
         checkpoint_dir (str): Directory to save checkpoints and wandb files.
     """
+    os.makedirs(checkpoint_dir, exist_ok=True)
 
     # Inicializa o wandb
     wandb.init(
@@ -232,8 +218,6 @@ def setup_wandb(args, checkpoint_dir):
 
 
 def log_wandb_samples(model, ds_valid, indices, device, epoch, prefix="val_sample"):
-    """Loga imagens de validação no wandb: original, groundtruth e segmentação."""
-    import torchvision.transforms.functional as F
     """
     Log validation images to wandb: original, ground truth, and segmentation.
     Args:
@@ -244,6 +228,7 @@ def log_wandb_samples(model, ds_valid, indices, device, epoch, prefix="val_sampl
         epoch (int): Current epoch.
         prefix (str, optional): Prefix for wandb log names.
     """
+    import torchvision.transforms.functional as F
 
     model.eval()
     images = []
@@ -295,6 +280,36 @@ def train(
     use_strides=None,
     extra_convs=None,
 ):
+    """
+    Train a segmentation model for multiple epochs.
+    Args:
+        model (nn.Module): Model to train.
+        bs_train (int): Batch size for training.
+        bs_valid (int): Batch size for validation.
+        num_epochs (int): Number of epochs.
+        lr (float): Learning rate.
+        weight_decay (float, optional): Weight decay.
+        resize_size (int, optional): Resize size for images.
+        seed (int, optional): Random seed.
+        num_workers (int, optional): Number of DataLoader workers.
+        checkpoint_dir (str, optional): Directory for checkpoints.
+        data_root (str, optional): Dataset root directory.
+        use_wandb (bool, optional): Whether to use wandb.
+        wandb_project (str, optional): wandb project name.
+        wandb_group (str, optional): wandb group name.
+        meta (any, optional): Additional metadata for wandb.
+        run_name (str, optional): wandb run name.
+        experiment_name (str, optional): Experiment name.
+        log_val_samples (bool, optional): Log validation samples to wandb.
+        val_sample_indices (list, optional): Indices of validation samples to log.
+        use_strides (list, optional): Strides for decoder.
+        extra_convs (bool, optional): Use extra conv layers in decoder.
+    Returns:
+        tuple: (ds_train, ds_valid, logger)
+            ds_train (Dataset): Training dataset.
+            ds_valid (Dataset): Validation dataset.
+            logger (list): Training log with metrics per epoch.
+    """
     seed_all(seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -398,36 +413,7 @@ def train(
         # Melhor modelo encontrado
         if loss_valid < best_loss:
             torch.save(checkpoint, f"{checkpoint_dir}/best_model.pt")
-    """
-    Train a segmentation model for multiple epochs.
-    Args:
-        model (nn.Module): Model to train.
-        bs_train (int): Batch size for training.
-        bs_valid (int): Batch size for validation.
-        num_epochs (int): Number of epochs.
-        lr (float): Learning rate.
-        weight_decay (float, optional): Weight decay.
-        resize_size (int, optional): Resize size for images.
-        seed (int, optional): Random seed.
-        num_workers (int, optional): Number of DataLoader workers.
-        checkpoint_dir (str, optional): Directory for checkpoints.
-        data_root (str, optional): Dataset root directory.
-        use_wandb (bool, optional): Whether to use wandb.
-        wandb_project (str, optional): wandb project name.
-        wandb_group (str, optional): wandb group name.
-        meta (any, optional): Additional metadata for wandb.
-        run_name (str, optional): wandb run name.
-        experiment_name (str, optional): Experiment name.
-        log_val_samples (bool, optional): Log validation samples to wandb.
-        val_sample_indices (list, optional): Indices of validation samples to log.
-        use_strides (list, optional): Strides for decoder.
-        extra_convs (bool, optional): Use extra conv layers in decoder.
-    Returns:
-        tuple: (ds_train, ds_valid, logger)
-            ds_train (Dataset): Training dataset.
-            ds_valid (Dataset): Validation dataset.
-            logger (list): Training log with metrics per epoch.
-    """
+    
             best_loss = loss_valid
 
     model.to("cpu")

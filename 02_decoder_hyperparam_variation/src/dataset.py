@@ -10,7 +10,6 @@ from torchvision import tv_tensors
 
 
 class Subset(Dataset):
-
     def __init__(self, ds, indices, transform=None):
         """
         Subset of a dataset with optional transform.
@@ -44,6 +43,7 @@ class Subset(Dataset):
         """
         return len(self.indices)
 
+
 class OxfordIIITPetSeg(Dataset):
     """
     Oxford-IIIT Pet Segmentation Dataset.
@@ -65,10 +65,10 @@ class OxfordIIITPetSeg(Dataset):
         images = []
         segs = []
         for line in open(anns_file).read().splitlines():
-            if line[0]!="#":   # Remove comentários do arquivo
+            if line[0] != "#":  # Remove comentários do arquivo
                 name, class_id, species_id, breed_id = line.strip().split()
-                images.append(images_folder/f"{name}.jpg")
-                segs.append(segs_folder/f"{name}.png")
+                images.append(images_folder / f"{name}.jpg")
+                segs.append(segs_folder / f"{name}.png")
 
         self.images = images
         self.segs = segs
@@ -87,9 +87,9 @@ class OxfordIIITPetSeg(Dataset):
         image = Image.open(self.images[idx]).convert("RGB")
         target_or = Image.open(self.segs[idx])
         target_np = np.array(target_or)
-        target_np[target_np==2] = 0
-        if self.ignore_val!=3:
-            target_np[target_np==3] = self.ignore_val
+        target_np[target_np == 2] = 0
+        if self.ignore_val != 3:
+            target_np[target_np == 3] = self.ignore_val
         target = Image.fromarray(target_np, mode="L")
         if self.transforms and apply_transform:
             image, target = self.transforms(image, target)
@@ -103,23 +103,31 @@ class OxfordIIITPetSeg(Dataset):
         """
         return len(self.images)
 
-class TransformsTrain:
 
+class TransformsTrain:
     def __init__(self, resize_size=384):
         """
         Transformations for training images and masks.
         Args:
             resize_size (int, optional): Size to resize images and masks.
         """
-        transforms = transf.Compose([
-            transf.PILToTensor(),   
-            transf.RandomResizedCrop(size=(resize_size,resize_size), scale=(0.5,1.), 
-                                     ratio=(0.9,1.1), antialias=True),
-            #transf.ColorJitter(brightness=0.2, contrast=0.1, saturation=0.1, hue=0.01),
-            transf.RandomHorizontalFlip(),
-            transf.ToDtype({tv_tensors.Image: torch.float32, tv_tensors.Mask: torch.int64}),
-            transf.Normalize(mean=(122.7, 114.6, 100.9), std=(59.2, 58.4, 59.0))
-        ])
+        transforms = transf.Compose(
+            [
+                transf.PILToTensor(),
+                transf.RandomResizedCrop(
+                    size=(resize_size, resize_size),
+                    scale=(0.5, 1.0),
+                    ratio=(0.9, 1.1),
+                    antialias=True,
+                ),
+                # transf.ColorJitter(brightness=0.2, contrast=0.1, saturation=0.1, hue=0.01),
+                transf.RandomHorizontalFlip(),
+                transf.ToDtype(
+                    {tv_tensors.Image: torch.float32, tv_tensors.Mask: torch.int64}
+                ),
+                transf.Normalize(mean=(122.7, 114.6, 100.9), std=(59.2, 58.4, 59.0)),
+            ]
+        )
         self.transforms = transforms
 
     def __call__(self, img, target):
@@ -139,20 +147,24 @@ class TransformsTrain:
         target = target.squeeze()
         return img, target
 
-class TransformsEval:
 
+class TransformsEval:
     def __init__(self, resize_size=384):
         """
         Transformations for evaluation images and masks.
         Args:
             resize_size (int, optional): Size to resize images and masks.
         """
-        transforms = transf.Compose([
-            transf.PILToTensor(),   
-            transf.Resize(size=resize_size, antialias=True),
-            transf.ToDtype({tv_tensors.Image: torch.float32, tv_tensors.Mask: torch.int64}),
-            transf.Normalize(mean=(122.7, 114.6, 100.9), std=(59.2, 58.4, 59.0))
-        ])
+        transforms = transf.Compose(
+            [
+                transf.PILToTensor(),
+                transf.Resize(size=resize_size, antialias=True),
+                transf.ToDtype(
+                    {tv_tensors.Image: torch.float32, tv_tensors.Mask: torch.int64}
+                ),
+                transf.Normalize(mean=(122.7, 114.6, 100.9), std=(59.2, 58.4, 59.0)),
+            ]
+        )
         self.transforms = transforms
 
     def __call__(self, img, target):
@@ -171,9 +183,9 @@ class TransformsEval:
         target = target.data
         target = target.squeeze()
         return img, target
-    
-def cat_list(images, fill_value=0):
 
+
+def cat_list(images, fill_value=0):
     """
     Concatenate a list of images or masks into a batch tensor, padding as needed.
     Args:
@@ -182,7 +194,7 @@ def cat_list(images, fill_value=0):
     Returns:
         torch.Tensor: Batched tensor of images or masks.
     """
-    is_target = images[0].ndim==2
+    is_target = images[0].ndim == 2
     num_rows, num_cols = zip(*[img.shape[-2:] for img in images])
     r_max, c_max = max(num_rows), max(num_cols)
     if is_target:
@@ -193,13 +205,13 @@ def cat_list(images, fill_value=0):
     for idx in range(len(images)):
         img = images[idx]
         if is_target:
-            batched_imgs[idx, :img.shape[0], :img.shape[1]] = img
+            batched_imgs[idx, : img.shape[0], : img.shape[1]] = img
         else:
-            batched_imgs[idx, :, :img.shape[1], :img.shape[2]] = img
+            batched_imgs[idx, :, : img.shape[1], : img.shape[2]] = img
     return batched_imgs
 
-def collate_fn(batch, img_fill=0, target_fill=2):
 
+def collate_fn(batch, img_fill=0, target_fill=2):
     """
     Collate function for DataLoader to batch images and masks with padding.
     Args:
@@ -214,8 +226,8 @@ def collate_fn(batch, img_fill=0, target_fill=2):
     batched_targets = cat_list(targets, fill_value=target_fill)
     return batched_imgs, batched_targets
 
-def unormalize(img):
 
+def unormalize(img):
     """
     Unnormalize an image tensor to original pixel values.
     Args:
@@ -226,12 +238,12 @@ def unormalize(img):
     img = img.permute(1, 2, 0)
     mean = torch.tensor([122.7, 114.6, 100.9])
     std = torch.tensor([59.2, 58.4, 59.0])
-    img = img*std + mean
+    img = img * std + mean
     img = img.to(torch.uint8)
     return img
 
-def get_dataset(root, split=0.2, resize_size=384):
 
+def get_dataset(root, split=0.2, resize_size=384):
     """
     Create train and validation datasets and class weights for Oxford-IIIT Pet Segmentation.
     Args:
@@ -247,7 +259,7 @@ def get_dataset(root, split=0.2, resize_size=384):
     class_weights = (0.33, 0.67)
     ds = OxfordIIITPetSeg(root)
     n = len(ds)
-    n_valid = int(n*split)
+    n_valid = int(n * split)
     indices = list(range(n))
     random.seed(42)
     random.shuffle(indices)
